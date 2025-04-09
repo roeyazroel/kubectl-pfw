@@ -1,0 +1,47 @@
+# Example configuration file for kubectl-pfw
+# Usage: kubectl pfw -f example-config.yaml
+
+# Optional: specify a default namespace
+defaultNamespace: default
+
+# Optional: specify a Kubernetes context
+# context: my-cluster-context
+
+# List of resources to forward
+resources:
+  # Example service port forwarding
+  - resourceType: service
+    name: my-api-service
+    # Optional: namespace (overrides defaultNamespace)
+    namespace: api
+    ports:
+      # Forward remote port 80 to local port 8080
+      - localPort: 8080
+        remotePort: 80
+      # Forward remote port 443 to any available local port
+      - localPort: 0
+        remotePort: 443
+
+  # Example pod port forwarding
+  - resourceType: pod
+    name: my-database-pod
+    ports:
+      # Forward remote port 5432 to local port 5432
+      - localPort: 5432
+        remotePort: 5432
+
+  # Example deployment port forwarding
+  - resourceType: deployment
+    name: my-frontend
+    ports:
+      # Forward remote port 3000 to local port 3000
+      - localPort: 3000
+        remotePort: 3000
+
+  # Example statefulset port forwarding
+  - resourceType: statefulset
+    name: my-redis
+    ports:
+      # Forward remote port 6379 to any available local port
+      - localPort: 0
+        remotePort: 6379

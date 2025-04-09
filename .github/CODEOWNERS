@@ -1,0 +1,12 @@
+# These owners will be the default owners for everything in
+# the repo. Unless a later match takes precedence,
+# @roeyazroel will be requested for review when someone opens a pull request.
+*       @roeyazroel
+
+# Specific directory ownership - example
+# /pkg/ui/    @ui-expert-username
+
+# Files ownership
+*.go    @roeyazroel
+*.yaml  @roeyazroel
+*.yml   @roeyazroel
