@@ -4,46 +4,46 @@ kind: Plugin
 metadata:
   name: pfw
 spec:
-  version: v0.0.5
+  version: v0.0.6
   platforms:
     - bin: kubectl-pfw.exe
-      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.5/kubectl-pfw_0.0.5_windows_arm64.zip
-      sha256: 84e796ed68bb7fc288b45a8311abef62dfeb702c1a301743d952a5d8a9be2b6e
+      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.6/kubectl-pfw_0.0.6_windows_arm64.zip
+      sha256: c13344026775f81576cff425650d2dad93de6c6a3df80a51de8b5817d91f5594
       selector:
         matchLabels:
           os: windows
           arch: arm64
     - bin: kubectl-pfw.exe
-      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.5/kubectl-pfw_0.0.5_windows_amd64.zip
-      sha256: 8934bee3a96293ab31bc57590a0206a389464f94ed0c5744d75faf305c92309f
+      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.6/kubectl-pfw_0.0.6_windows_amd64.zip
+      sha256: 70793f61f637a11b3d84a810cbe14ae99282bb83dfa3442df68933aa2df5b085
       selector:
         matchLabels:
           os: windows
           arch: amd64
     - bin: kubectl-pfw
-      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.5/kubectl-pfw_0.0.5_linux_arm64.tar.gz
-      sha256: 38c6146570445fae9ff650a3f1d12b6496873c2b891ec9a0638a9a40cd623e39
+      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.6/kubectl-pfw_0.0.6_linux_arm64.tar.gz
+      sha256: f59947251d76e106f4d5b36458a5302ab2bdf4decd129046a48bd8a18832af6d
       selector:
         matchLabels:
           os: linux
           arch: arm64
     - bin: kubectl-pfw
-      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.5/kubectl-pfw_0.0.5_linux_amd64.tar.gz
-      sha256: 6ecf2d226eded8982694be75403510a688a48f888dc97021a49859d719f849da
+      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.6/kubectl-pfw_0.0.6_linux_amd64.tar.gz
+      sha256: 5cd824b9c8604335b726d5952b2e0e8c4aaeb86b1fad461ea7dc49a7f4722fe8
       selector:
         matchLabels:
           os: linux
           arch: amd64
     - bin: kubectl-pfw
-      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.5/kubectl-pfw_0.0.5_darwin_arm64.tar.gz
-      sha256: 9f0f5a393e923fd65277567808521ac2fe4a2499672fd4853ca6ad979a742757
+      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.6/kubectl-pfw_0.0.6_darwin_arm64.tar.gz
+      sha256: 5cbdbd5fc62753c2ef3e602a807a8dcfd5864528e2d55036ef2ec2461ef37662
       selector:
         matchLabels:
           os: darwin
           arch: arm64
     - bin: kubectl-pfw
-      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.5/kubectl-pfw_0.0.5_darwin_amd64.tar.gz
-      sha256: e04a18cb772a5efd349346d15bb7c5613a52cf0b1fe0634a25b6eac3f85f2840
+      uri: https://github.com/roeyazroel/kubectl-pfw/releases/download/v0.0.6/kubectl-pfw_0.0.6_darwin_amd64.tar.gz
+      sha256: d7117368911a9baa338489cd78fe5c9e8ceb8f8615fd705c84b731806bed6dc1
       selector:
         matchLabels:
           os: darwin
