@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 project_name: kubectl-pfw
 
 before:
@@ -20,9 +21,7 @@ builds:
       - arm64
 
 archives:
-  - format: tar.gz
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
+  - format_overrides:
       - goos: windows
         format: zip
     files:
@@ -59,7 +58,4 @@ krews:
     description: |
       A kubectl plugin for port-forwarding multiple services or pods simultaneously.
       Select and port-forward multiple services or pods with an interactive interface.
-    homepage: https://github.com/roeyazroel/kubectl-pfw
-
-sboms:
-  - artifacts: archive
+    homepage: https://github.com/roeyazroel/kubectl-pfw"

@@ -7,7 +7,7 @@
 *.dll
 *.so
 *.dylib
-kubectl-pfw
+/kubectl-pfw
 
 # Test binary, built with `go test -c`
 *.test
@@ -33,3 +33,5 @@ go.work.sum
 
 # OS specific files
 .DS_Store
+
+/dist
