@@ -101,6 +101,20 @@ kubectl pfw -n mynamespace
 kubectl pfw --pods
 ```
 
+### Generate a configuration file for reuse
+
+```bash
+kubectl pfw --generate-config --output my-config.yaml
+```
+
+This will guide you through selecting resources interactively and specifying port mappings, then save the configuration to a file for later use.
+
+You can also generate configs for pods:
+
+```bash
+kubectl pfw --pods --generate-config
+```
+
 ### Use a configuration file for consistent port-forwarding
 
 ```bash

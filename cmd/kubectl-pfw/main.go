@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -33,6 +34,12 @@ var (
 
 	# Port forward using a configuration file
 	%[1]s pfw -f config.yaml
+
+	# Generate a configuration file from interactive selection
+	%[1]s pfw --generate-config --output my-config.yaml
+
+	# Generate a configuration file for pods
+	%[1]s pfw --pods --generate-config
 `
 )
 
@@ -66,9 +73,14 @@ func main() {
 
 	usePods := false
 	configFile := ""
+	generateConfig := false
+	outputFile := "kubectl-pfw-config.yaml"
+
 	root.Flags().BoolVar(&usePods, "pods", false, "Select pods instead of services")
 	root.Flags().StringVarP(&configFile, "file", "f", "", "Configuration file for port forwarding")
 	root.Flags().BoolP("version", "v", false, "Show version information")
+	root.Flags().BoolVarP(&generateConfig, "generate-config", "g", false, "Generate configuration file from interactive selection")
+	root.Flags().StringVarP(&outputFile, "output", "o", outputFile, "Output file for generated configuration")
 
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
@@ -98,6 +110,21 @@ func run(flags *genericclioptions.ConfigFlags, streams genericclioptions.IOStrea
 		return fmt.Errorf("failed to get --file flag: %w", err)
 	}
 
+	generateConfig, err := cmd.Flags().GetBool("generate-config")
+	if err != nil {
+		return fmt.Errorf("failed to get --generate-config flag: %w", err)
+	}
+
+	outputFile, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return fmt.Errorf("failed to get --output flag: %w", err)
+	}
+
+	// If both configFile and generateConfig are specified, show an error
+	if configFile != "" && generateConfig {
+		return fmt.Errorf("cannot use both --file and --generate-config flags together")
+	}
+
 	// Start port forwarding manager
 	manager := portforward.NewManager(client.GetConfig(), client.GetClientset(), client, streams, ctx)
 
@@ -122,7 +149,16 @@ func run(flags *genericclioptions.ConfigFlags, streams genericclioptions.IOStrea
 			return err
 		}
 	} else {
-		// Otherwise, use interactive selection
+		// If generate config is specified, run interactive selection and generate config
+		if generateConfig {
+			err := generateConfigFile(usePods, outputFile, client, streams, ctx)
+			if err != nil {
+				return err
+			}
+			return nil // Exit after generating config
+		}
+
+		// Otherwise, use interactive selection for port forwarding
 		err := runInteractive(usePods, manager, client, streams, ctx)
 		if err != nil {
 			return err
@@ -131,6 +167,128 @@ func run(flags *genericclioptions.ConfigFlags, streams genericclioptions.IOStrea
 
 	fmt.Fprintln(streams.Out, "Port forwarding started. Press Ctrl+C to stop.")
 	manager.WaitForCompletion()
+
+	return nil
+}
+
+// generateConfigFile handles interactive selection and generates a configuration file
+func generateConfigFile(usePods bool, outputFile string, client *k8s.Client, streams genericclioptions.IOStreams, ctx context.Context) error {
+	var resources []ui.Resource
+	if usePods {
+		// Get pods
+		pods, err := client.GetPods(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get pods: %w", err)
+		}
+
+		// Convert pods to resources
+		resources = make([]ui.Resource, 0, len(pods))
+		for _, pod := range pods {
+			// Only add pods with ports
+			if len(pod.Ports) > 0 {
+				resources = append(resources, ui.NewResourceFromPod(pod))
+			}
+		}
+
+		if len(resources) == 0 {
+			return fmt.Errorf("no pods with exposed ports found in namespace %s", client.GetNamespace())
+		}
+	} else {
+		// Get services
+		services, err := client.GetServices(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get services: %w", err)
+		}
+
+		// Convert services to resources
+		resources = make([]ui.Resource, 0, len(services))
+		for _, svc := range services {
+			// Only add services with ports
+			if len(svc.Ports) > 0 {
+				resources = append(resources, ui.NewResourceFromService(svc))
+			}
+		}
+
+		if len(resources) == 0 {
+			return fmt.Errorf("no services with ports found in namespace %s", client.GetNamespace())
+		}
+	}
+
+	// Display multi-select UI
+	var prompt string
+	if usePods {
+		prompt = fmt.Sprintf("Select pods for configuration in namespace %s:", client.GetNamespace())
+	} else {
+		prompt = fmt.Sprintf("Select services for configuration in namespace %s:", client.GetNamespace())
+	}
+
+	selectedResources, err := ui.SelectResources(resources, prompt)
+	if err != nil {
+		return err
+	}
+
+	// Ask for local port for each resource port
+	portMaps := make(map[string]map[int]int32)
+
+	for _, resource := range selectedResources {
+		portMap := make(map[int]int32)
+		portMaps[resource.Name] = portMap
+
+		for i, portValue := range resource.Ports {
+			// Ask the user for the local port
+			var portName string
+			if i < len(resource.PortNames) && resource.PortNames[i] != "" {
+				portName = resource.PortNames[i]
+			}
+
+			// Display port info
+			var promptMsg string
+			if portName != "" {
+				promptMsg = fmt.Sprintf("Local port for %s/%s (remote port %d)", resource.Name, portName, portValue)
+			} else {
+				promptMsg = fmt.Sprintf("Local port for %s (remote port %d)", resource.Name, portValue)
+			}
+
+			// For ephemeral port allocation, suggest 0
+			fmt.Fprintf(streams.Out, "%s [%d, or 0 for auto]: ", promptMsg, portValue)
+			var localPort int32
+			_, err := fmt.Fscanln(streams.In, &localPort)
+			if err != nil {
+				// Default to the same as remote port if input fails
+				localPort = portValue
+			}
+
+			portMap[i] = localPort
+		}
+	}
+
+	// Resolve target ports for services before generating the config
+	resolvedPorts, err := config.ResolveTargetPorts(ctx, selectedResources, client)
+	if err != nil {
+		return fmt.Errorf("failed to resolve target ports: %w", err)
+	}
+
+	// Generate config from selected resources and port mappings
+	cfg := config.GenerateConfig(selectedResources, portMaps, resolvedPorts, client.GetNamespace())
+
+	// Ensure the output directory exists
+	outputDir := filepath.Dir(outputFile)
+	if outputDir != "" && outputDir != "." {
+		err := os.MkdirAll(outputDir, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+	}
+
+	// Write the config to file
+	err = config.WriteConfig(cfg, outputFile)
+	if err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	// Show success message
+	fmt.Fprintf(streams.Out, "Configuration file generated at: %s\n", outputFile)
+	fmt.Fprintf(streams.Out, "You can use it with: kubectl pfw -f %s\n", outputFile)
 
 	return nil
 }
