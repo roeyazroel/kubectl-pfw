@@ -69,13 +69,29 @@ func (c *Client) GetPodsForDeployment(ctx context.Context, deploymentName string
 			Ports:     []PodPort{},
 		}
 
+		// Add ports from init containers
+		for _, container := range p.Spec.InitContainers {
+			for _, port := range container.Ports {
+				podPort := PodPort{
+					Name:            port.Name,
+					ContainerPort:   port.ContainerPort,
+					Protocol:        string(port.Protocol),
+					ContainerName:   container.Name,
+					IsInitContainer: true,
+				}
+				pod.Ports = append(pod.Ports, podPort)
+			}
+		}
+
+		// Add ports from regular containers
 		for _, container := range p.Spec.Containers {
 			for _, port := range container.Ports {
 				podPort := PodPort{
-					Name:          port.Name,
-					ContainerPort: port.ContainerPort,
-					Protocol:      string(port.Protocol),
-					ContainerName: container.Name,
+					Name:            port.Name,
+					ContainerPort:   port.ContainerPort,
+					Protocol:        string(port.Protocol),
+					ContainerName:   container.Name,
+					IsInitContainer: false,
 				}
 				pod.Ports = append(pod.Ports, podPort)
 			}

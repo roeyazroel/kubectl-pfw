@@ -32,6 +32,7 @@ type Resource struct {
 	PortNames       []string              // Name of the port (if specified)
 	TargetPortSpecs []*intstr.IntOrString // For services, the original targetPort spec
 	DisplayName     string
+	PortMetadata    []k8s.PortMetadata // Additional metadata about ports (like init container info)
 }
 
 // NewResourceFromService creates a Resource from a k8s.Service
@@ -62,12 +63,19 @@ func NewResourceFromPod(pod k8s.Pod) Resource {
 	ports := make([]int32, len(pod.Ports))
 	portNames := make([]string, len(pod.Ports))
 	targetPortSpecs := make([]*intstr.IntOrString, len(pod.Ports))
+	portMetadata := make([]k8s.PortMetadata, len(pod.Ports))
 
 	for i, port := range pod.Ports {
 		ports[i] = port.ContainerPort
 		portNames[i] = port.Name
 		intOrStr := intstr.FromInt(int(port.ContainerPort))
 		targetPortSpecs[i] = &intOrStr
+
+		// Store metadata about the port
+		portMetadata[i] = k8s.PortMetadata{
+			ContainerName:   port.ContainerName,
+			IsInitContainer: port.IsInitContainer,
+		}
 	}
 
 	return Resource{
@@ -78,6 +86,7 @@ func NewResourceFromPod(pod k8s.Pod) Resource {
 		PortNames:       portNames,
 		TargetPortSpecs: targetPortSpecs,
 		DisplayName:     k8s.PodToString(pod),
+		PortMetadata:    portMetadata,
 	}
 }
 
@@ -145,16 +154,41 @@ func SelectResources(resources []Resource, message string) ([]Resource, error) {
 
 // AskForLocalPort asks the user to confirm or change the local port
 func AskForLocalPort(resource Resource, suggestedPort int32, portIndex int) (int32, error) {
+	// Get port name and container info
 	portName := ""
-	if portIndex < len(resource.PortNames) && resource.PortNames[portIndex] != "" {
-		portName = resource.PortNames[portIndex]
+	isInitContainer := false
+	containerName := ""
+
+	if portIndex < len(resource.PortNames) {
+		if resource.PortNames[portIndex] != "" {
+			portName = resource.PortNames[portIndex]
+		}
+
+		// Check if port is from a PodResource with IsInitContainer info
+		if resource.Type == PodResource && portIndex < len(resource.PortMetadata) {
+			metadata := resource.PortMetadata[portIndex]
+			isInitContainer = metadata.IsInitContainer
+			containerName = metadata.ContainerName
+		}
 	}
 
 	var message string
 	if portName != "" {
-		message = fmt.Sprintf("Local port for %s/%s (remote port %d)", resource.Name, portName, resource.Ports[portIndex])
+		if isInitContainer {
+			message = fmt.Sprintf("Local port for %s/%s (remote init container %s port %d)",
+				resource.Name, portName, containerName, resource.Ports[portIndex])
+		} else {
+			message = fmt.Sprintf("Local port for %s/%s (remote port %d)",
+				resource.Name, portName, resource.Ports[portIndex])
+		}
 	} else {
-		message = fmt.Sprintf("Local port for %s (remote port %d)", resource.Name, resource.Ports[portIndex])
+		if isInitContainer {
+			message = fmt.Sprintf("Local port for %s (remote init container %s port %d)",
+				resource.Name, containerName, resource.Ports[portIndex])
+		} else {
+			message = fmt.Sprintf("Local port for %s (remote port %d)",
+				resource.Name, resource.Ports[portIndex])
+		}
 	}
 
 	var port string
