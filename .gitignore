@@ -34,5 +34,8 @@ go.work.sum
 # OS specific files
 .DS_Store
 
+
 /dist
 /plugins
+
+structure.md

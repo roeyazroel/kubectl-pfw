@@ -35,6 +35,8 @@ type Resource struct {
 	PortMetadata    []k8s.PortMetadata // Additional metadata about ports (like init container info)
 }
 
+var askOne = survey.AskOne
+
 // NewResourceFromService creates a Resource from a k8s.Service
 func NewResourceFromService(svc k8s.Service) Resource {
 	ports := make([]int32, len(svc.Ports))
@@ -135,7 +137,7 @@ func SelectResources(resources []Resource, message string) ([]Resource, error) {
 		PageSize: len(options),
 	}
 
-	err := survey.AskOne(prompt, &selected)
+	err := askOne(prompt, &selected)
 	if err != nil {
 		return nil, fmt.Errorf("selection error: %w", err)
 	}
@@ -157,7 +159,6 @@ func AskForLocalPort(resource Resource, suggestedPort int32, portIndex int) (int
 	// Get port name and container info
 	portName := ""
 	isInitContainer := false
-	containerName := ""
 
 	if portIndex < len(resource.PortNames) {
 		if resource.PortNames[portIndex] != "" {
@@ -168,26 +169,27 @@ func AskForLocalPort(resource Resource, suggestedPort int32, portIndex int) (int
 		if resource.Type == PodResource && portIndex < len(resource.PortMetadata) {
 			metadata := resource.PortMetadata[portIndex]
 			isInitContainer = metadata.IsInitContainer
-			containerName = metadata.ContainerName
 		}
 	}
 
+	// Simple message with just the target port
 	var message string
+
 	if portName != "" {
 		if isInitContainer {
-			message = fmt.Sprintf("Local port for %s/%s (remote init container %s port %d)",
-				resource.Name, portName, containerName, resource.Ports[portIndex])
+			message = fmt.Sprintf("Local port for %s/%s (remote port %d)",
+				resource.Name, portName, suggestedPort)
 		} else {
 			message = fmt.Sprintf("Local port for %s/%s (remote port %d)",
-				resource.Name, portName, resource.Ports[portIndex])
+				resource.Name, portName, suggestedPort)
 		}
 	} else {
 		if isInitContainer {
-			message = fmt.Sprintf("Local port for %s (remote init container %s port %d)",
-				resource.Name, containerName, resource.Ports[portIndex])
+			message = fmt.Sprintf("Local port for %s (remote port %d)",
+				resource.Name, suggestedPort)
 		} else {
 			message = fmt.Sprintf("Local port for %s (remote port %d)",
-				resource.Name, resource.Ports[portIndex])
+				resource.Name, suggestedPort)
 		}
 	}
 
@@ -197,7 +199,7 @@ func AskForLocalPort(resource Resource, suggestedPort int32, portIndex int) (int
 		Default: fmt.Sprintf("%d", suggestedPort),
 	}
 
-	err := survey.AskOne(prompt, &port, survey.WithValidator(func(val interface{}) error {
+	err := askOne(prompt, &port, survey.WithValidator(func(val interface{}) error {
 		str, ok := val.(string)
 		if !ok {
 			return fmt.Errorf("invalid input")

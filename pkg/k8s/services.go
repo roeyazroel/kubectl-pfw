@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -137,6 +138,25 @@ func (c *Client) GetPodsForService(ctx context.Context, serviceName string) ([]P
 	return pods, nil
 }
 
+// formatTargetPort returns a string representation of a targetPort from a ServicePort
+func formatTargetPort(port ServicePort) string {
+	if port.TargetPortSpec == nil {
+		// Default to service port if targetPort is not specified
+		return fmt.Sprintf("%d", port.Port)
+	} else if port.TargetPortSpec.Type == intstr.String {
+		// Named port
+		return port.TargetPortSpec.StrVal
+	} else {
+		// Numeric port
+		if port.TargetPortSpec.IntVal == 0 {
+			// If IntVal is 0, it means target port wasn't specified, so use service port
+			return fmt.Sprintf("%d", port.Port)
+		} else {
+			return fmt.Sprintf("%d", port.TargetPortSpec.IntVal)
+		}
+	}
+}
+
 // ServiceToString returns a string representation of a service
 func ServiceToString(service Service) string {
 	if len(service.Ports) == 0 {
@@ -145,10 +165,27 @@ func ServiceToString(service Service) string {
 
 	if len(service.Ports) == 1 {
 		port := service.Ports[0]
+		targetPortStr := formatTargetPort(port)
+
 		if port.Name != "" {
-			return fmt.Sprintf("%s (%s:%d/%s)", service.Name, port.Name, port.Port, port.Protocol)
+			return fmt.Sprintf("%s (%s:%d->%s/%s)", service.Name, port.Name, port.Port, targetPortStr, port.Protocol)
 		}
-		return fmt.Sprintf("%s (%d/%s)", service.Name, port.Port, port.Protocol)
+		return fmt.Sprintf("%s (%d->%s/%s)", service.Name, port.Port, targetPortStr, port.Protocol)
+	}
+
+	// For multiple ports, show details for up to 5 ports
+	if len(service.Ports) <= 5 {
+		portDetails := make([]string, len(service.Ports))
+		for i, port := range service.Ports {
+			targetPortStr := formatTargetPort(port)
+
+			if port.Name != "" {
+				portDetails[i] = fmt.Sprintf("%s:%d->%s/%s", port.Name, port.Port, targetPortStr, port.Protocol)
+			} else {
+				portDetails[i] = fmt.Sprintf("%d->%s/%s", port.Port, targetPortStr, port.Protocol)
+			}
+		}
+		return fmt.Sprintf("%s (%s)", service.Name, strings.Join(portDetails, ", "))
 	}
 
 	return fmt.Sprintf("%s (%d ports)", service.Name, len(service.Ports))
