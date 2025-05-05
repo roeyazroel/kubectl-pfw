@@ -101,6 +101,14 @@ kubectl pfw -n mynamespace
 kubectl pfw --pods
 ```
 
+### Show version information
+
+```bash
+kubectl pfw -v
+# or
+kubectl pfw --version
+```
+
 ### Generate a configuration file for reuse
 
 ```bash
@@ -175,11 +183,12 @@ For service port-forwarding to work properly:
 ### Project Structure
 
 ```
-k8s-pfw/
+kubectl-pfw/
 ├── cmd/
 │   └── kubectl-pfw/           # Main entry point
 │       └── main.go
 ├── pkg/
+│   ├── cli/                   # Command-line interface handling
 │   ├── portforward/           # Port forwarding logic
 │   │   ├── portforward.go     # Service/pod forwarding implementation
 │   │   ├── manager.go         # Manages multiple port forwards
