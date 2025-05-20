@@ -243,12 +243,6 @@ brew tap roeyazroel/tap
 brew install kubectl-pfw
 ```
 
-#### Krew (Kubernetes plugin manager)
-
-```bash
-kubectl krew install pfw
-```
-
 #### Manual Installation
 
 Download the appropriate binary for your platform from the [releases page](https://github.com/roeyazroel/kubectl-pfw/releases).
